@@ -1,0 +1,196 @@
+Logistic Regression Code
+## Setting the current working directory to a desired path
+setwd("C:\\Users\\Srujana\\Desktop\\Data_Sets")
+
+## Installing and using required libraries
+## install.packages("reshape2")
+library(reshape2)
+library(ROCR)
+library(MASS)
+
+## Reading training data, test data, and expected results and storing them in variables
+train <- read.csv("TrainingDataInsurance.csv")
+test <- read.csv("TestDataInsurance.csv")
+test_response <- read.csv("test_response.csv")
+
+## Appending expected results to test data in order to later pass them into the model
+## for comparing with the predicted results
+test <- cbind(test_response,test)
+
+var <- colnames(test)
+for(i in 1:length(var)){
+  a <- vector()
+  b <- vector()
+  no_val <- vector()
+  if(length(unique(test[var[i]])[,1])<50){
+    a <- sort(unique(test[var[i]])[,1])
+    b <- sort(unique(train[var[i]])[,1])
+    no_val <- a[!a %in% b]
+    if(length(no_val) == 1){
+      main_val <- a[!a %in% b]
+      print(main_val)
+      train_val <- unique(train[var[i]])[,1]
+      print(train_val)
+      test[which(test[var[i]] == main_val),var[i]] <- sample(train_val,1)
+    } else {
+      main_val <- a[!a %in% b]
+      print(main_val)
+      train_val <- unique(train[var[i]])[,1]
+      print(train_val)
+      test[which(test[var[i]] %in% main_val),var[i]] <- sample(train_val,1)
+      
+    }
+  }
+}
+
+## Weights of evidence and information value - Profiling categorical variables - to find significant categorical variables 
+## Weight above 0.1 value indicates that it is significant variable
+
+iv <- data.frame()
+x <- c("CustomerSubtype", "Numberofhouses",    "Avgsizehousehold",    "Avgage",    "Customermaintype",    "Romancatholic",
+       "Protestant",    "Otherreligion",    "Noreligion",    "Married",    "Livingtogether",    "Otherrelation",    
+       "Singles",    "Householdwithoutchildren",    "Householdwithchildren",    "Highleveleducation",    "Mediumleveleducation",
+       "Lowerleveleducation",    "Highstatus",    "Entrepreneur",    "Farmer",    "Middlemanagement",    "Skilledlabourers",    
+       "Unskilledlabourers",    "SocialclassA",    "SocialclassB1",    "SocialclassB2",    "SocialclassC",    "SocialclassD",
+       "Rentedhouse",    "Homeowners",    "Onecar",    "Twocars",    "Nocar",    "NationalHealthService",    "Privatehealthinsurance",
+       "IncomeLessThanThirtyThousand",    "IncomeBetweenThirtyThousandAndFortyFiveThousand",    "IncomeBetweenFortyFiveThousandAndSeventyFiveThousand",
+       "IncomeBetweenSeventyFiveThousandAndOneTwentyTwoThousand",    "IncomeGreaterThanOneTwentyThreeThousand",    
+       "AverageIncome",    "Purchasingpowerclass",    "Contributionprivatethirdpartyinsurance")
+for (i in seq(1,length(x),1)) {
+  a <- table(train[,x[i]], train[,"CARAVANNumberofmobilehomepolicies"])
+  a <- as.data.frame(a)
+  a <- dcast(a, Var1 ~ Var2)
+  a[,4] <- a[,2]/sum(a[,2])
+  a[,5] <- a[,3]/sum(a[,3])
+  a[,6] <- log(a[,4]/a[,5], exp(1))
+  a[,7] <- a[,6]*(a[,4] - a[,5])
+  a[,8] <- a[,2] + a[,3]
+  a <- subset(a, a$"1" >= 1)
+  #assign(paste("table",x[i], sep = "_" ), a)
+  iv[i,1] <- x[i]
+  iv[i,2] <- sum(a$V7)
+  print(iv[i,2])
+}
+
+## building logistic regression model 
+## as.factor function - is to tell R that the particular variable is categorical
+fit <- glm(CARAVANNumberofmobilehomepolicies ~  as.factor(Customermaintype) + as.factor(Numberofhouses) + as.factor(Avgsizehousehold) + 
+             as.factor(Avgage) + as.factor(Customermaintype) + as.factor(Romancatholic) + as.factor(Protestant) + as.factor(Otherreligion) +  as.factor(Noreligion) +
+             as.factor(Married) + as.factor(Livingtogether) + as.factor(Otherrelation) + as.factor(Singles) + as.factor(Householdwithoutchildren) +    
+             as.factor(Householdwithchildren) + as.factor(Highleveleducation) + as.factor(Mediumleveleducation) + as.factor(Lowerleveleducation) + as.factor(Highstatus) +
+             as.factor(Entrepreneur) + as.factor(Farmer) + as.factor(Middlemanagement) + as.factor(Skilledlabourers) + as.factor(Unskilledlabourers) + as.factor(SocialclassA) +
+             as.factor(SocialclassB1) + as.factor(SocialclassB2) + as.factor(SocialclassC) + as.factor(SocialclassD) + as.factor(Rentedhouse) +
+             as.factor(Onecar)  + as.factor(Twocars) + as.factor(Nocar) + as.factor(NationalHealthService)  +
+             as.factor(IncomeLessThanThirtyThousand) + as.factor(IncomeBetweenThirtyThousandAndFortyFiveThousand) + as.factor(IncomeBetweenFortyFiveThousandAndSeventyFiveThousand) +
+             as.factor(IncomeBetweenSeventyFiveThousandAndOneTwentyTwoThousand) + as.factor(IncomeGreaterThanOneTwentyThreeThousand)    + as.factor(AverageIncome) +
+             as.factor(Purchasingpowerclass) + as.factor(Contributionprivatethirdpartyinsurance) + Contributionthirdpartyinsurancefirms + Contributionthirdpartyinsuraneagriculture + 
+             Contributioncarpolicies + Contributiondeliveryvanpolicies + ContributionmotorcycleOrscooterpolicies + Contributionlorrypolicies  + Contributiontrailerpolicies + Contributiontractorpolicies +
+             Contributionagriculturalmachinespolicies + Contributionmopedpolicies + Contributionlifeinsurances + Contributionprivateaccidentinsurancepolicies + 
+             Contributionfamilyaccidentsinsurancepolicies + Contributiondisabilityinsurancepolicies + Contributionfirepolicies + Contributionsurfboardpolicies + 
+             Contributionboatpolicies + Contributionbicyclepolicies + Contributionpropertyinsurancepolicies + Contributionsocialsecurityinsurancepolicies + 
+             Numberofprivatethirdpartyinsurance + Numberofthirdpartyinsurancefirms + Numberofthirdpartyinsuraneagriculture + Numberofcarpolicies + 
+             Numberofdeliveryvanpolicies + NumberofmotorcycleOrscooterpolicies + Numberoflorrypolicies  + Numberoftrailerpolicies + Numberoftractorpolicies + 
+             Numberofagriculturalmachinespolicies + Numberofmopedpolicies + Numberoflifeinsurances + Numberofprivateaccidentinsurancepolicies + 
+             Numberoffamilyaccidentsinsurancepolicies + Numberofdisabilityinsurancepolicies + Numberoffirepolicies + Numberofsurfboardpolicies + Numberofboatpolicies +
+             Numberofbicyclepolicies    + Numberofpropertyinsurancepolicies + Numberofsocialsecurityinsurancepolicies, family ="binomial", data = train)
+
+## Stepwise Regression
+step <- stepAIC(fit, direction="forward")
+
+## display results
+step$anova  
+
+## Performing prediction based on training data
+train$pred<-predict(fit,train,type = "response") 
+pred<-prediction(train$pred,train$CARAVANNumberofmobilehomepolicies) 
+
+## Calculating the accuracy of prediction on training data
+auc_data <- performance(pred,"auc")@y.values[[1]]
+auc_data
+
+## Performing prediction based on test data
+test$pred <- predict(fit,test,type="response")
+pred1<-prediction(test$pred,test$CARAVANNumberofmobilehomepolicies) 
+
+## Calculating the accuracy of prediction on test data
+auc_test <- performance(pred1,"auc")@y.values[[1]]
+auc_test
+
+Random Forest Code
+## Setting the current working directory to a desired path
+setwd("C:\\Users\\Srujana\\Desktop\\Data_Sets")
+
+## Installing and using required libraries
+## install.packages("ROCR")
+## install.packages("ggplot2", dependencies = TRUE)
+## install.packages("randomForest")
+library("ggplot2")
+library("ROCR")
+library("randomForest")
+
+## Reading training data, test data, and expected results and storing them in variables
+train <- read.csv("TrainingDataInsurance.csv")
+test <- read.csv("TestDataInsurance.csv")
+test_response <- read.csv("test_response.csv")
+Accuracy <- read.csv("Results.csv")
+
+## Appending expected results to test data in order to later pass them into the model
+## for comparing with the predicted results
+test <- cbind(test_response,test)
+
+## Creating Categorical Dummy values
+var = c("Customermaintype" , "Numberofhouses" , "Avgsizehousehold", "Avgage", "Customermaintype", "Romancatholic", "Protestant", "Otherreligion", "Noreligion" , "Married", "Livingtogether", "Otherrelation", "Singles", "Householdwithoutchildren", "Householdwithchildren" , "Highleveleducation" , "Mediumleveleducation", "Lowerleveleducation", "Highstatus",
+        "Entrepreneur" , "Farmer" , "Middlemanagement" , "Skilledlabourers" , "Unskilledlabourers" , "SocialclassA" ,
+        "SocialclassB1" , "SocialclassB2" , "SocialclassC" , "SocialclassD" , "Rentedhouse" ,
+        "Onecar"  , "Twocars", "Nocar" , "NationalHealthService",
+        "IncomeLessThanThirtyThousand" , "IncomeBetweenThirtyThousandAndFortyFiveThousand" , "IncomeBetweenFortyFiveThousandAndSeventyFiveThousand",
+        "IncomeBetweenSeventyFiveThousandAndOneTwentyTwoThousand" , "IncomeGreaterThanOneTwentyThreeThousand" , "AverageIncome",
+        "Purchasingpowerclass" , "Contributionprivatethirdpartyinsurance")
+
+for(i in 1:length(var)){
+  train[,var[i]] <- (train[,var[i]])
+}
+
+## Creating a predictive model based on random forest algorithm
+fit <- randomForest(CARAVANNumberofmobilehomepolicies ~  Customermaintype + Numberofhouses + Avgsizehousehold+ Avgage+ Customermaintype+ Romancatholic+ Protestant+ Otherreligion+ Noreligion + Married+ Livingtogether+ Otherrelation+ Singles+ Householdwithoutchildren+ Householdwithchildren + Highleveleducation + Mediumleveleducation+ Lowerleveleducation+ Highstatus+
+                      Entrepreneur + Farmer + Middlemanagement + Skilledlabourers + Unskilledlabourers + SocialclassA +
+                      SocialclassB1 + SocialclassB2 + SocialclassC + SocialclassD + Rentedhouse +
+                      Onecar  + Twocars+ Nocar + NationalHealthService+
+                      IncomeLessThanThirtyThousand + IncomeBetweenThirtyThousandAndFortyFiveThousand + IncomeBetweenFortyFiveThousandAndSeventyFiveThousand+
+                      IncomeBetweenSeventyFiveThousandAndOneTwentyTwoThousand + IncomeGreaterThanOneTwentyThreeThousand + AverageIncome+
+                      Purchasingpowerclass + Contributionprivatethirdpartyinsurance + Contributionthirdpartyinsurancefirms + Contributionthirdpartyinsuraneagriculture + 
+                      Contributioncarpolicies + Contributiondeliveryvanpolicies + ContributionmotorcycleOrscooterpolicies + Contributionlorrypolicies  + Contributiontrailerpolicies + Contributiontractorpolicies +
+                      Contributionagriculturalmachinespolicies + Contributionmopedpolicies + Contributionlifeinsurances + Contributionprivateaccidentinsurancepolicies + 
+                      Contributionfamilyaccidentsinsurancepolicies + Contributiondisabilityinsurancepolicies + Contributionfirepolicies + Contributionsurfboardpolicies + 
+                      Contributionboatpolicies + Contributionbicyclepolicies + Contributionpropertyinsurancepolicies + Contributionsocialsecurityinsurancepolicies + 
+                      Numberofprivatethirdpartyinsurance + Numberofthirdpartyinsurancefirms + Numberofthirdpartyinsuraneagriculture + Numberofcarpolicies + 
+                      Numberofdeliveryvanpolicies + NumberofmotorcycleOrscooterpolicies + Numberoflorrypolicies  + Numberoftrailerpolicies + Numberoftractorpolicies + 
+                      Numberofagriculturalmachinespolicies + Numberofmopedpolicies + Numberoflifeinsurances + Numberofprivateaccidentinsurancepolicies + 
+                      Numberoffamilyaccidentsinsurancepolicies + Numberofdisabilityinsurancepolicies + Numberoffirepolicies + Numberofsurfboardpolicies + Numberofboatpolicies +
+                      Numberofbicyclepolicies + Numberofpropertyinsurancepolicies + Numberofsocialsecurityinsurancepolicies, data = train, ntree=1000, mtry = 5, node.size = 50, importance=TRUE, proximity=TRUE)
+
+## Performing prediction based on training data
+train$pred<-predict(fit,type = "response")
+pred<-prediction(train$pred,train$CARAVANNumberofmobilehomepolicies)
+
+## Calculating the accuracy of prediction on training data
+auc_data <- performance(pred,"auc")@y.values[[1]]
+auc_data
+
+## Performing prediction based on test data
+test$pred <- predict(fit,test,type="response")
+
+## Calculating the accuracy of prediction on test data
+pred1<-prediction(test$pred,test$CARAVANNumberofmobilehomepolicies) 
+auc_test <- performance(pred1,"auc")@y.values[[1]]
+auc_test
+
+## Graph showing the relation among average income, customer sub type, and the output variable
+myplot<-ggplot(data = train, aes(x = CustomerSubtype, y = CARAVANNumberofmobilehomepolicies,color = AverageIncome))
+myplot+geom_point(size=3)+facet_grid(.~AverageIncome, scales="free")
+
+## Graph showing the relation among average income, customer sub type, and the output variable
+myplot<-ggplot(data = train, aes(x = CustomerSubtype, y = AverageIncome,color = CARAVANNumberofmobilehomepolicies))
+myplot+geom_point(size=3)+facet_grid(.~CARAVANNumberofmobilehomepolicies, scales="free")
+
+
