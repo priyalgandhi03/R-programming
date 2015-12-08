@@ -1,4 +1,4 @@
-setwd("C:\\Users\\Srujana\\Desktop\\Data_Sets")
+setwd("C:\\Users\\Priyal\\Desktop\\Data_Sets")
 train <- read.csv("TrainingDataInsurance.csv")
 test <- read.csv("TestDataInsurance.csv")
 test_response <- read.csv("test_response.csv")
